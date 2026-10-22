@@ -1,5 +1,5 @@
 
-from PyQt5.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication
 import sys
 from iss_xsample import xsample
 

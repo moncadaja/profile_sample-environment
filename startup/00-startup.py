@@ -3,7 +3,7 @@ import time as ttime
 from databroker.v0 import Broker
 
 import bluesky
-from distutils.version import LooseVersion
+from packaging.version import Version
 from datetime import datetime
 
 import sys
@@ -65,7 +65,7 @@ def kill_pid_ioc():
     os.kill(pid_ioc, 9)
 
 
-if bluesky.__version__ < LooseVersion('1.6'):
+if Version(bluesky.__version__) < Version('1.6'):
     OLD_BLUESKY = True
 else:
     OLD_BLUESKY = False
