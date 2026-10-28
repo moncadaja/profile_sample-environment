@@ -1,6 +1,5 @@
 import time as ttime
 
-from databroker.v0 import Broker
 
 import bluesky
 from packaging.version import Version
@@ -9,6 +8,7 @@ from datetime import datetime
 import sys
 import os
 import signal
+os.environ.setdefault('QT_API', 'pyqt6')
 from pathlib import Path
 from timeit import default_timer as timer
 import shlex, subprocess
@@ -44,14 +44,30 @@ def print_to_gui(msg, tag='', add_timestamp=False, ntabs=0, stdout_alt=sys.stdou
     print(msg, file=stdout, flush=True)
 
 
-db_archiver = Broker.named('iss-archiver')
-arch_iss  = db_archiver.event_sources_by_name['arch_iss']
+# Same data access as XLive: the databroker 2 / Tiled catalog called "iss" on this host.
+from databroker import Broker
+try:
+    db = Broker.named('iss')
+except Exception as _exc:
+    print(f'[startup] databroker catalog "iss" is not available: {_exc}')
+    db = None
+
+# PV history for the GUI plots comes straight from the beamline Archiver Appliance
+# (databroker v0's "iss-archiver" event source no longer exists in databroker 2).
+from iss_xsample.archiver import ArchiverClient
+ARCHIVER_URL = os.environ.get('ISS_ARCHIVER_URL', '')
+if not ARCHIVER_URL:
+    print('[startup] ISS_ARCHIVER_URL is not set: history plots will stay empty '
+          '(set it in pixi.toml [feature.terminal.tasks] start env or the shell)')
+arch_iss = ArchiverClient(ARCHIVER_URL, tz='US/Eastern')
 
 # args = shlex.split('python /home/xf08id/.ipython/profile_sample-environment/iocs/ioc_ramping.py')
 # args = shlex.split('conda activate collection-2021-1.2; gnome-terminal -e "python /home/xf08id/.ipython/profile_sample-environment/iocs/ioc_ramping.py"')
 # args = shlex.split('"python /home/xf08id/.ipython/profile_sample-environment/iocs/ioc_ramping.py"')
 # ioc_args = shlex.split('gnome-terminal -- python /home/xf08id/.ipython/profile_sample-environment/iocs/ioc_ramping.py')
-ioc_args = shlex.split('gnome-terminal -- python /nsls2/data/iss/shared/config/bluesky/profile_sample-environment/iocs/ioc_ramping.py')
+# ramping IOC from this checkout, run with this environment's interpreter
+_ioc_script = Path(__file__).resolve().parent.parent / 'iocs' / 'ioc_ramping.py'
+ioc_args = ['gnome-terminal', '--', sys.executable, str(_ioc_script)]
 
 ioc_process = subprocess.Popen(ioc_args)
 
@@ -117,3 +133,4 @@ from bluesky import RunEngine
 
 from bluesky.utils import get_history
 RE = RunEngine({})
+get_ipython().enable_gui('qt')  # Qt event loop for the GUI (matplotlib no longer enables it implicitly)

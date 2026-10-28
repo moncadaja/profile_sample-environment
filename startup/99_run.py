@@ -16,7 +16,7 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
 
-app = QApplication(sys.argv)
+app = QApplication.instance() or QApplication(sys.argv)  # IPython's Qt integration may already own one
 
 
 

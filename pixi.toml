@@ -1,0 +1,72 @@
+# ISS sample-environment profile (xsample GUI: gas handling, temperature program, RGA) under pixi.
+#
+# Launch:   pixi run start            (from this directory)
+# Checks:   pixi run -e py311 check   /   pixi run -e py313 check
+#
+# The beamline Archiver Appliance (ISS_ARCHIVER_URL, set on the start task) feeds the history plots.
+[workspace]
+requires-pixi = ">=0.82.1"
+channels = ["conda-forge"]
+name = "profile_sample-environment"
+platforms = [{ name = "linux-64-glibc-2-17", platform = "linux-64", glibc = "2.17" }]
+version = "2026.10.0"
+
+[feature.profile.dependencies]
+numpy = ">=2,<3"
+pandas = ">=2,<3"
+matplotlib-base = ">=3.10"
+pytz = "*"
+requests = "*"
+openpyxl = "*"
+packaging = "*"
+simple-pid = "*"
+h5py = "*"
+# control system
+bluesky-base = ">=1.13"
+ophyd = ">=1.11"
+pyepics = "*"
+caproto = "*"             # iocs/ioc_ramping.py
+# same data access as the collection profile (XLive)
+databroker = ">=2.0.0b8,<3"
+tiled-client = ">=0.2.11,<0.2.19"  # databroker 2.0.1 imports tiled.queries.AccessBlobFilter, dropped in 0.2.19
+bluesky-tiled-plugins = "*"
+# GUI
+pyqt6 = ">=6.7,<7"
+qtpy = ">=2.4"
+# pulled in by the editable isstools/xas installs
+numexpr = "*"
+pyzbar = "*"
+slackclient = "*"
+xraydb = ">=4.5"
+xlsxwriter = "*"
+
+[feature.profile.pypi-dependencies]
+iss-xsample = { path = "../xsample", editable = true }
+isstools = { path = "../isstools", editable = true }
+xas = { path = "../xas", editable = true }
+isscloudtools = { path = "../isscloudtools", editable = true }
+
+[feature.terminal.dependencies]
+python = ">=3.12,<3.14"
+ipython = ">=9.0"
+
+[feature.terminal.tasks]
+start = { cmd = "unset SESSION_MANAGER PYTHONPATH && PYTHONNOUSERSITE=1 QT_API=pyqt6 MPLBACKEND=qtagg ipython --profile-dir=$PIXI_PROJECT_ROOT", env = { ISS_ARCHIVER_URL = "http://epics-services-iss.nsls2.bnl.local:19268/retrieval" } }
+
+# interpreter-compatibility checks: import the GUI package and load its .ui files headlessly
+[feature.check.dependencies]
+pytest = ">=8"
+
+[feature.check.tasks]
+check = { cmd = "python -c 'import iss_xsample.xsample, iss_xsample.gas_type, iss_xsample.archiver; import sys; print(sys.version)' && pytest -q ../xsample/iss_xsample/tests", env = { QT_QPA_PLATFORM = "offscreen", QT_API = "pyqt6" } }
+
+[feature.py311.dependencies]
+python = "3.11.*"
+
+[feature.py313.dependencies]
+python = "3.13.*"
+
+[environments]
+terminal = { features = ["profile", "terminal"], solve-group = "terminal" }
+py311 = { features = ["profile", "check", "py311"] }
+py313 = { features = ["profile", "check", "py313"] }
